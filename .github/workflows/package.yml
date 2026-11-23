@@ -1,0 +1,37 @@
+name: Package extension
+
+# Runs when you push a tag like v1.0.0, builds the zip for the Chrome Web Store
+# and attaches it to a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches manifest version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(jq -r .version extension/manifest.json)
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "Tag v$TAG_VERSION does not match manifest version $MANIFEST_VERSION"
+            exit 1
+          fi
+
+      - name: Build zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd extension
+          zip -r "../hushfeed-$VERSION.zip" . -x '.*' -x '*/.*'
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: hushfeed-*.zip
+          generate_release_notes: true

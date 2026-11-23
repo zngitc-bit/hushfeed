@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hushfeed</title>
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><clipPath id="hfb"><rect x="4.5" y="5.5" width="23" height="17" rx="5"/><path d="M8.5 20v8l7.5-6.5z"/></clipPath></defs>
+        <rect width="32" height="32" rx="8" fill="currentColor"/>
+        <g class="bubble"><rect x="4.5" y="5.5" width="23" height="17" rx="5"/><path d="M8.5 20v8l7.5-6.5z"/></g>
+        <rect x="8.5" y="9.6" width="13" height="2.5" rx="1.25" fill="currentColor"/>
+        <rect x="8.5" y="13.9" width="10" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/>
+        <rect x="8.5" y="18.2" width="6" height="2.5" rx="1.25" fill="currentColor" opacity=".22"/>
+        <line clip-path="url(#hfb)" x1="3.5" y1="28" x2="28.5" y2="3" stroke="#fff" stroke-width="5.6"/>
+        <line x1="3.5" y1="28" x2="28.5" y2="3" stroke="currentColor" stroke-width="2.6"/>
+      </svg>
+      <span class="name">Hushfeed</span>
+    </div>
+    <label class="switch" title="Turn filtering on or off (Alt+Shift+H)">
+      <input type="checkbox" id="enabled" aria-label="Filtering enabled">
+      <span class="track"></span>
+    </label>
+  </header>
+
+  <p id="status" class="status" role="status"></p>
+
+  <form id="addForm" class="add">
+    <input id="word" type="text" placeholder="Hide posts containing…" autocomplete="off" aria-label="Word or phrase to hide">
+    <button class="primary" type="submit">Hide</button>
+  </form>
+
+  <ul id="list" class="list"></ul>
+  <p id="empty" class="muted small" hidden>No rules yet. Add a word above, for example a name or a topic you’re tired of seeing.</p>
+
+  <fieldset class="seg">
+    <legend class="sr">What happens to a matching post</legend>
+    <label><input type="radio" name="mode" value="hide"> Hide</label>
+    <label><input type="radio" name="mode" value="collapse"> Collapse</label>
+    <label><input type="radio" name="mode" value="blur"> Blur</label>
+  </fieldset>
+
+  <footer>
+    <span id="total" class="muted small"></span>
+    <button id="openOptions" class="link" type="button">All settings</button>
+  </footer>
+
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

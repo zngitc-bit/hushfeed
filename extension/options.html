@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hushfeed settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><clipPath id="hfb"><rect x="4.5" y="5.5" width="23" height="17" rx="5"/><path d="M8.5 20v8l7.5-6.5z"/></clipPath></defs>
+        <rect width="32" height="32" rx="8" fill="currentColor"/>
+        <g class="bubble"><rect x="4.5" y="5.5" width="23" height="17" rx="5"/><path d="M8.5 20v8l7.5-6.5z"/></g>
+        <rect x="8.5" y="9.6" width="13" height="2.5" rx="1.25" fill="currentColor"/>
+        <rect x="8.5" y="13.9" width="10" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/>
+        <rect x="8.5" y="18.2" width="6" height="2.5" rx="1.25" fill="currentColor" opacity=".22"/>
+        <line clip-path="url(#hfb)" x1="3.5" y1="28" x2="28.5" y2="3" stroke="#fff" stroke-width="5.6"/>
+        <line x1="3.5" y1="28" x2="28.5" y2="3" stroke="currentColor" stroke-width="2.6"/>
+      </svg>
+      <span class="name">Hushfeed</span>
+      <span id="version" class="muted"></span>
+    </div>
+    <label class="master">
+      <span id="masterLabel">Filtering on</span>
+      <span class="switch"><input type="checkbox" id="enabled" aria-labelledby="masterLabel"><span class="track"></span></span>
+    </label>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Sections">
+      <a href="#keywords">Keywords</a>
+      <a href="#accounts">Accounts</a>
+      <a href="#exceptions">Exceptions</a>
+      <a href="#behavior">Behavior</a>
+      <a href="#backup">Backup</a>
+      <a href="#about">About</a>
+    </nav>
+
+    <main>
+      <section id="keywords">
+        <h2>Keywords and phrases</h2>
+        <p class="lead">Posts that match any active rule are filtered. Matching ignores capitalization unless you turn on case-sensitive.</p>
+
+        <form id="kwForm" class="form">
+          <div class="row-inline">
+            <input id="kwText" type="text" placeholder="Word, phrase or pattern" autocomplete="off" aria-label="Word, phrase or pattern">
+            <button class="primary" type="submit">Add rule</button>
+          </div>
+          <div class="options">
+            <label class="check"><input type="checkbox" id="kwWhole"> Whole word</label>
+            <label class="check"><input type="checkbox" id="kwCase"> Case-sensitive</label>
+            <label class="check"><input type="checkbox" id="kwRegex"> Regular expression</label>
+            <label class="check">Search in
+              <select id="kwScope">
+                <option value="text">Post text</option>
+                <option value="all">Post text and author</option>
+              </select>
+            </label>
+          </div>
+          <p id="kwError" class="error" role="alert" hidden></p>
+        </form>
+
+        <ul id="kwList" class="rows"></ul>
+        <p id="kwEmpty" class="empty">No keyword rules yet. Add a name, a topic or a spoiler you want out of your feed.</p>
+      </section>
+
+      <section id="accounts">
+        <h2>Accounts</h2>
+        <p class="lead">Hide every post written by these accounts, whatever it says.</p>
+        <form id="acForm" class="form">
+          <div class="row-inline">
+            <input id="acText" type="text" placeholder="@username" autocomplete="off" aria-label="Account username">
+            <button class="primary" type="submit">Add account</button>
+          </div>
+          <p id="acError" class="error" role="alert" hidden></p>
+        </form>
+        <ul id="acList" class="rows"></ul>
+        <p id="acEmpty" class="empty">No accounts hidden.</p>
+      </section>
+
+      <section id="exceptions">
+        <h2>Exceptions</h2>
+        <p class="lead">A post containing one of these phrases is never filtered, even if it matches a rule above.</p>
+        <form id="alForm" class="form">
+          <div class="row-inline">
+            <input id="alText" type="text" placeholder="Phrase to always allow" autocomplete="off" aria-label="Phrase to always allow">
+            <button class="primary" type="submit">Add exception</button>
+          </div>
+        </form>
+        <ul id="alList" class="rows"></ul>
+        <p id="alEmpty" class="empty">No exceptions.</p>
+      </section>
+
+      <section id="behavior">
+        <h2>Behavior</h2>
+
+        <fieldset class="modes">
+          <legend>When a post matches</legend>
+          <label class="mode"><input type="radio" name="mode" value="hide"><span><strong>Hide it</strong><small>The post disappears from the feed.</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="collapse"><span><strong>Collapse it</strong><small>Leaves a slim note with a Show button.</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="blur"><span><strong>Blur it</strong><small>Keeps the post in place, blurred until you click it.</small></span></label>
+        </fieldset>
+
+        <fieldset class="checks">
+          <legend>Where to filter</legend>
+          <label class="check"><input type="checkbox" data-place="home"> Home timeline</label>
+          <label class="check"><input type="checkbox" data-place="search"> Search and hashtags</label>
+          <label class="check"><input type="checkbox" data-place="profile"> Profile pages</label>
+          <label class="check"><input type="checkbox" data-place="thread"> Post pages and replies</label>
+          <label class="check"><input type="checkbox" data-place="other"> Everywhere else (lists, explore, bookmarks)</label>
+        </fieldset>
+
+        <fieldset class="checks">
+          <legend>Extras</legend>
+          <label class="check"><input type="checkbox" id="promoted"> Also hide promoted posts (ads)</label>
+          <p class="hint">Ads are detected by their label, which varies by language, so this is best effort.</p>
+        </fieldset>
+      </section>
+
+      <section id="backup">
+        <h2>Backup</h2>
+        <p class="lead">Move your rules to another browser, or keep a copy. <span id="statsLine"></span></p>
+        <div class="buttons">
+          <button id="exportBtn" class="secondary" type="button">Export settings</button>
+          <button id="importBtn" class="secondary" type="button">Import settings</button>
+          <button id="resetBtn" class="secondary danger" type="button">Reset everything</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden>
+        </div>
+        <p id="backupMsg" class="hint" role="status"></p>
+      </section>
+
+      <section id="about">
+        <h2>About</h2>
+        <p class="lead">Hushfeed works entirely in your browser. Your rules are stored on this device only, and nothing is sent anywhere. It does not collect analytics.</p>
+        <p class="hint">Keyboard shortcut: <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd> turns filtering on or off. You can change it at <span class="mono">chrome://extensions/shortcuts</span>.</p>
+        <p class="hint">Hushfeed is an independent project and is not affiliated with or endorsed by X Corp.</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

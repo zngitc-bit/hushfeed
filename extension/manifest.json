@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Hushfeed – Mute posts by keyword",
+  "short_name": "Hushfeed",
+  "version": "1.0.0",
+  "description": "Hide posts on X (Twitter) that contain words, phrases or accounts you choose. Private and fast: everything stays on your device.",
+  "minimum_chrome_version": "111",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["shared.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Hushfeed",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "commands": {
+    "toggle-enabled": {
+      "suggested_key": { "default": "Alt+Shift+H" },
+      "description": "Turn filtering on or off"
+    }
+  }
+}
