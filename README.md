@@ -24,6 +24,8 @@ Mute posts on X (Twitter) by keyword, phrase or account. Chrome extension, Manif
 | `store/` | Store listing text, promo tile, screenshots, marquee |
 | `docs/` | Privacy policy, published with GitHub Pages |
 | `scripts/` | `build.sh` creates the store zip on macOS / Linux |
+| `tests/` | End-to-end tests that run the extension in Chromium (Playwright) |
+| `.github/workflows/` | Builds the release zip when a version tag is pushed |
 
 ## Release a new version
 
@@ -31,6 +33,16 @@ Mute posts on X (Twitter) by keyword, phrase or account. Chrome extension, Manif
 2. Raise `version` in `extension/manifest.json` and add a line to `CHANGELOG.md`.
 3. Commit, then create and push a tag that matches the version (for example `v1.0.1`).
 4. GitHub builds `hushfeed-1.0.1.zip` and attaches it to a Release. Upload that file in the Chrome Web Store dashboard.
+
+## Run the tests
+
+```
+pip install playwright
+playwright install chromium
+python tests/e2e.py
+```
+
+The tests load the extension in Chromium and run it against a mock of the X timeline. They cannot replace a manual check on x.com after X changes its page.
 
 ## Privacy
 
@@ -44,4 +56,4 @@ zng.itc@gmail.com
 
 Independent project, not affiliated with or endorsed by X Corp.
 
-Copyright © 2026 [ZNG]. All rights reserved.
+Copyright © 2026 ZNG. All rights reserved.

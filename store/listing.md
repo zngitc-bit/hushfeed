@@ -44,7 +44,7 @@ Hide posts on x.com / twitter.com that match words, phrases or accounts the user
 - Data collected: none. Leave every data-type box unchecked.
 - Certify: not sold to third parties, not used for unrelated purposes, not used for creditworthiness or lending.
 - Remote code: No. All code is bundled in the package.
-- Privacy policy URL: use the GitHub Pages address of docs/index.md (https://YOUR-USERNAME.github.io/hushfeed/) and paste the link.
+- Privacy policy URL: use the GitHub Pages address of docs/index.md (https://zngitc-bit.github.io/hushfeed/) and paste the link.
 
 ## Images to upload
 - Store icon 128x128: icons/icon128.png (already in the package)
