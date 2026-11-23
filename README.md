@@ -44,4 +44,4 @@ zng.itc@gmail.com
 
 Independent project, not affiliated with or endorsed by X Corp.
 
-Copyright © 2026 [your name]. All rights reserved.
+Copyright © 2026 [ZNG]. All rights reserved.
