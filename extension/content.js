@@ -16,7 +16,8 @@
   let version = 0;
   let scheduled = false;
 
-  const seen = new Set();
+  const seen = new Set(); // hidden posts on this page, shown in the badge
+  const counted = new Set(); // posts already added to the lifetime total
   let pending = 0;
   let flushTimer;
 
@@ -54,6 +55,32 @@
     return m ? m[1] : null;
   }
 
+  // Text of a node, with emoji (rendered by X as <img alt="...">) kept in place.
+  function textOf(el) {
+    let out = "";
+    const walk = (n) => {
+      if (n.nodeType === 3) out += n.nodeValue;
+      else if (n.nodeType === 1) {
+        if (n.tagName === "IMG") out += n.alt || "";
+        else if (n.tagName === "BR") out += "\n";
+        else n.childNodes.forEach(walk);
+      }
+    };
+    walk(el);
+    return out;
+  }
+
+  function emojiOf(el) {
+    return Array.from(el.querySelectorAll("img[alt]"), (i) => i.alt).join(" ");
+  }
+
+  // Cheap fingerprint of a string, used to skip posts whose content did not change.
+  function sigOf(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return s.length + ":" + h;
+  }
+
   function isPromoted(article) {
     return article.innerText.split("\n").some((line) => PROMO_LABELS.has(line.trim()));
   }
@@ -63,7 +90,7 @@
     if (!settings.enabled || !settings.places[place]) return null;
 
     const text = Array.from(article.querySelectorAll('[data-testid="tweetText"]'))
-      .map((el) => el.innerText)
+      .map(textOf)
       .join("\n");
 
     if (allow.length) {
@@ -81,7 +108,7 @@
     let full = null;
     for (const { k, re } of rules) {
       let hay = text;
-      if (k.scope === "all") hay = full === null ? (full = article.innerText) : full;
+      if (k.scope === "all") hay = full === null ? (full = article.innerText + "\n" + emojiOf(article)) : full;
       if (re.test(hay)) return "“" + k.text + "”";
     }
     return null;
@@ -167,7 +194,8 @@
 
   function notify() {
     try {
-      chrome.runtime.sendMessage({ type: "hf:count", count: seen.size });
+      const r = chrome.runtime.sendMessage({ type: "hf:count", count: seen.size });
+      if (r && r.catch) r.catch(() => {});
     } catch (_) {}
   }
 
@@ -183,19 +211,23 @@
 
   function track(article, reason) {
     const key = tweetKey(article) || reason + "|" + article.textContent.slice(0, 80);
-    if (seen.has(key)) return;
-    seen.add(key);
-    pending++;
-    notify();
-    clearTimeout(flushTimer);
-    flushTimer = setTimeout(flush, 2000);
+    if (!seen.has(key)) {
+      seen.add(key);
+      notify();
+    }
+    if (!counted.has(key)) {
+      counted.add(key);
+      pending++;
+      clearTimeout(flushTimer);
+      flushTimer = setTimeout(flush, 2000);
+    }
   }
 
   function scan() {
     scheduled = false;
     const place = currentPlace();
     document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
-      const sig = version + "|" + place + "|" + article.textContent.length;
+      const sig = version + "|" + place + "|" + sigOf(article.textContent);
       if (article.__hfSig === sig) return;
       article.__hfSig = sig;
       const reason = evaluate(article, place);
@@ -214,6 +246,8 @@
     settings = await HF.load();
     compile();
     version++;
+    seen.clear(); // the page count is rebuilt from the posts that match the new settings
+    notify();
     schedule(0);
   }
 
