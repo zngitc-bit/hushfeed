@@ -61,6 +61,7 @@
             </label>
           </div>
           <p id="kwError" class="error" role="alert" hidden></p>
+          <p class="hint">Rules can contain up to 200 characters. Regular expressions that take too long are skipped for the current page to keep browsing responsive.</p>
         </form>
 
         <ul id="kwList" class="rows"></ul>
@@ -89,6 +90,7 @@
             <input id="alText" type="text" placeholder="Phrase to always allow" autocomplete="off" aria-label="Phrase to always allow">
             <button class="primary" type="submit">Add exception</button>
           </div>
+          <p id="alError" class="error" role="alert" hidden></p>
         </form>
         <ul id="alList" class="rows"></ul>
         <p id="alEmpty" class="empty">No exceptions.</p>

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.2
+- Validate imported backups before replacing settings, preserving existing rules on invalid input.
+- Run regular expressions in an isolated worker with a time limit and a popup warning for skipped slow rules.
+- Recheck text nodes, emoji and post identity changes, and reset Show when a different post reuses an element.
+- Preserve block boundaries when matching post text and author, including adjacent React elements and hidden posts.
+- Report account, exception and keyword limits before saving, and reject oversized input without truncation.
+- Rebuild the current-page counter on navigation and content changes, and reset statistics together with settings.
+- Serialize statistics updates across tabs and ignore increments from before a reset.
+- Detect promoted labels outside post text, author names and linked content.
+- Expand regression coverage and return a failing test exit code when a check fails.
+
 ## 1.0.1
 - Fixed: keywords that are emoji now match posts where X renders the emoji as an image.
 - Fixed: a post whose text changed to a different text of the same length was not re-checked.

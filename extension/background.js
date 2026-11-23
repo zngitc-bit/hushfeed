@@ -1,4 +1,27 @@
 // Badge counter + keyboard shortcut + first-run welcome.
+importScripts("shared.js");
+
+// Serialize increments and resets so tabs cannot overwrite each other's totals.
+let storageQueue = Promise.resolve();
+
+chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  if (!msg || !["hf:stats", "hf:reset"].includes(msg.type)) return;
+  if (msg.type === "hf:reset" && sender.url?.split(/[?#]/)[0] !== chrome.runtime.getURL("options.html")) return;
+  if (msg.type === "hf:stats" && (!sender.tab || sender.frameId !== 0)) return;
+  const operation = storageQueue.then(async () => {
+    const { stats } = await chrome.storage.local.get("stats");
+    const epoch = stats && stats.epoch || 0;
+    if (msg.type === "hf:reset") {
+      await chrome.storage.local.set({ settings: HF.sanitize(null), stats: { total: 0, epoch: epoch + 1 } });
+    } else if (msg.epoch === epoch && Number.isSafeInteger(msg.count) && msg.count > 0) {
+      await chrome.storage.local.set({ stats: { total: (stats && stats.total || 0) + msg.count, epoch } });
+    }
+    return { ok: true };
+  });
+  storageQueue = operation.catch(() => {});
+  operation.then(respond, () => respond({ ok: false }));
+  return true;
+});
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg && msg.type === "hf:count" && sender.tab) {

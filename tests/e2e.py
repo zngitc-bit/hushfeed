@@ -4,8 +4,9 @@ Run from the repo root:
     pip install playwright && playwright install chromium
     python tests/e2e.py
 """
-import json, time, os, shutil, tempfile
+import json, time, os, shutil, tempfile, sys
 from playwright.sync_api import sync_playwright
+from regressions import run_regressions
 
 EXT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "extension"))
 PROFILE = tempfile.mkdtemp(prefix="hushfeed-pw-")
@@ -52,6 +53,16 @@ with sync_playwright() as p:
     sw = ctx.service_workers[0] if ctx.service_workers else ctx.wait_for_event("serviceworker", timeout=15000)
     ext_id = sw.url.split("/")[2]
     check("extension loads, service worker registered", bool(ext_id))
+    # Installation opens options automatically. Wait for it before navigating another tab.
+    welcome = None
+    for _ in range(100):
+        welcome = next((tab for tab in ctx.pages if tab.url == f"chrome-extension://{ext_id}/options.html"), None)
+        if welcome:
+            welcome.wait_for_load_state()
+            break
+        ctx.pages[0].wait_for_timeout(50)
+    if welcome is None:
+        raise RuntimeError("The installation welcome page did not open")
 
     def handler(route):
         route.fulfill(status=200, content_type="text/html", body=page_html(POSTS))
@@ -249,8 +260,8 @@ with sync_playwright() as p:
                   article(15, "slow", "Slow", "a"*30 + "!", False))
     t0 = time.time()
     try:
-        page.evaluate("1+1", )  # would hang if the main thread is busy
-        page.wait_for_timeout(300)
+        page.wait_for_timeout(800)  # Let the observer start matching before probing responsiveness.
+        page.evaluate("1+1")
         dt = time.time() - t0
         check("ReDoS: catastrophic regex does not freeze the page", dt < 3, f"{dt:.1f}s")
     except Exception as e:
@@ -315,7 +326,7 @@ with sync_playwright() as p:
     bad = os.path.join(PROFILE, "bad.json"); open(bad, "w").write("not json")
     o.set_input_files("#importFile", bad); o.wait_for_timeout(300)
     check("options: importing a bad file shows a message and keeps rules", "couldn" in o.inner_text("#backupMsg") and o.locator("#kwList li").count() == 2)
-    evil = os.path.join(PROFILE, "evil.json"); json.dump({"keywords":[{"text":"<img src=x onerror=alert(1)>"}], "mode":"zzz", "places":{"home":"yes"}, "accounts":["a"*40]}, open(evil, "w"))
+    evil = os.path.join(PROFILE, "evil.json"); json.dump({"keywords":[{"text":"<img src=x onerror=alert(1)>"}], "mode":"zzz", "places":{"home":"yes"}, "accounts":["valid_user"]}, open(evil, "w"))
     o.set_input_files("#importFile", evil); o.wait_for_timeout(400)
     check("options: hostile import is sanitized and not executed as HTML", o.locator("#kwList img").count() == 0 and o.locator("#kwList li").count() == 1)
 
@@ -332,9 +343,15 @@ with sync_playwright() as p:
     check("popup: duplicate (different case) not added twice", pu.inner_text("#list").lower().count("newword") == 1)
     pass
 
+    page.close()
+    pu.close()
+    o.close()
+    run_regressions(ctx, admin, ext_id, check, article, page_html, console_errors)
     ctx.close()
 
 print()
 passed = sum(1 for r in results if r[1]); print(f"{passed}/{len(results)} passed")
 print("FAILED:", [r[0] for r in results if not r[1]])
 print("console/page errors:", console_errors[:10])
+shutil.rmtree(PROFILE, ignore_errors=True)
+sys.exit(0 if passed == len(results) and not console_errors else 1)

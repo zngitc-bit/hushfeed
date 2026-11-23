@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hushfeed – Mute posts by keyword",
   "short_name": "Hushfeed",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Hide posts on X (Twitter) that contain words, phrases or accounts you choose. Private and fast: everything stays on your device.",
   "minimum_chrome_version": "111",
   "icons": {
@@ -14,9 +14,15 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["shared.js", "content.js"],
+      "js": ["shared.js", "regex-client.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["regex-frame.html"],
+      "matches": ["https://x.com/*", "https://twitter.com/*"]
     }
   ],
   "background": { "service_worker": "background.js" },

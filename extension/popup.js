@@ -1,6 +1,15 @@
 const $ = (s) => document.querySelector(s);
 let S = HF.sanitize(null);
 let pageCount = null;
+let activeTabId = null;
+
+function updatePageState(state) {
+  pageCount = state ? state.count : null;
+  const warning = $("#regexWarning");
+  warning.hidden = !state || !state.regexWarning;
+  warning.textContent = state && state.regexWarning || "";
+  renderStatus();
+}
 
 const commit = () => HF.save(S);
 
@@ -56,6 +65,13 @@ $("#addForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const text = $("#word").value.trim();
   if (!text) return;
+  const error = $("#wordError");
+  error.hidden = true;
+  if (text.length > HF.LIMITS.text || S.keywords.length >= HF.LIMITS.keywords) {
+    error.textContent = text.length > HF.LIMITS.text ? "Use up to 200 characters." : "You’ve reached the limit of 500 rules.";
+    error.hidden = false;
+    return;
+  }
   const dupe = S.keywords.some((k) => !k.regex && !k.wholeWord && !k.caseSensitive && k.text.toLowerCase() === text.toLowerCase());
   if (!dupe && S.keywords.length < HF.LIMITS.keywords) {
     S.keywords.unshift(HF.cleanKeyword({ text }));
@@ -87,8 +103,9 @@ async function init() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab && tab.id) {
+      activeTabId = tab.id;
       const res = await chrome.tabs.sendMessage(tab.id, { type: "hf:get-state" });
-      pageCount = res ? res.count : null;
+      updatePageState(res);
     }
   } catch (_) {
     pageCount = null;
@@ -99,4 +116,17 @@ async function init() {
   const total = (stats && stats.total) || 0;
   $("#total").textContent = total ? total.toLocaleString() + " hidden in total" : "";
 }
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg && msg.type === "hf:count" && sender.tab && sender.tab.id === activeTabId) updatePageState(msg);
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if (changes[HF.KEY]) { S = HF.sanitize(changes[HF.KEY].newValue); render(); }
+  if (changes.stats) {
+    const total = changes.stats.newValue && changes.stats.newValue.total || 0;
+    $("#total").textContent = total ? total.toLocaleString() + " hidden in total" : "";
+  }
+});
 init();

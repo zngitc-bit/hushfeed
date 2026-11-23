@@ -9,17 +9,20 @@
     "home", "explore", "notifications", "messages", "i", "settings", "compose", "search",
     "hashtag", "bookmarks", "lists", "communities", "jobs", "premium", "tos", "privacy"
   ]);
+  const TEXT_BLOCKS = new Set(["ARTICLE", "DIV", "P", "SECTION", "HEADER", "FOOTER", "BLOCKQUOTE", "LI", "H1", "H2", "H3"]);
 
   let settings = HF.sanitize(null);
   let rules = [];
   let allow = [];
   let version = 0;
-  let scheduled = false;
+  let scanTimer = null;
+  let scanning = false;
+  let rescan = false;
+  let statsEpoch = 0;
+  let ready = false;
 
   const seen = new Set(); // hidden posts on this page, shown in the badge
   const counted = new Set(); // posts already added to the lifetime total
-  let pending = 0;
-  let flushTimer;
 
   function compile() {
     rules = settings.keywords
@@ -56,42 +59,53 @@
   }
 
   // Text of a node, with emoji (rendered by X as <img alt="...">) kept in place.
-  function textOf(el) {
+  function textOf(el, separateBlocks = false) {
     let out = "";
+    const lineBreak = () => { if (out && !out.endsWith("\n")) out += "\n"; };
     const walk = (n) => {
       if (n.nodeType === 3) out += n.nodeValue;
       else if (n.nodeType === 1) {
         if (n.tagName === "IMG") out += n.alt || "";
         else if (n.tagName === "BR") out += "\n";
-        else n.childNodes.forEach(walk);
+        else {
+          const block = separateBlocks && TEXT_BLOCKS.has(n.tagName);
+          if (block) lineBreak();
+          n.childNodes.forEach(walk);
+          if (block) lineBreak();
+        }
       }
     };
     walk(el);
     return out;
   }
 
-  function emojiOf(el) {
-    return Array.from(el.querySelectorAll("img[alt]"), (i) => i.alt).join(" ");
-  }
-
-  // Cheap fingerprint of a string, used to skip posts whose content did not change.
-  function sigOf(s) {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-    return s.length + ":" + h;
-  }
-
   function isPromoted(article) {
-    return article.innerText.split("\n").some((line) => PROMO_LABELS.has(line.trim()));
+    if (article.querySelector('[data-testid="promotedIndicator"]')) return true;
+    // Labels live outside post text, author names, quoted posts and link cards.
+    return Array.from(article.querySelectorAll("span, div")).some((node) =>
+      node.childElementCount === 0 && PROMO_LABELS.has(node.textContent.trim()) &&
+      !node.closest('[data-testid="tweetText"], [data-testid="User-Name"], a, [role="link"], [data-testid="card.wrapper"], [data-testid="quoteTweet"]')
+    );
   }
 
-  // Returns a short reason string when the post should be hidden, otherwise null.
-  function evaluate(article, place) {
-    if (!settings.enabled || !settings.places[place]) return null;
+  function snapshot(article) {
+    const text = Array.from(article.querySelectorAll('[data-testid="tweetText"]')).map((node) => textOf(node)).join("\n");
+    const handle = authorHandle(article);
+    return {
+      text,
+      // Keep block boundaries even when our CSS hides the article. innerText
+      // changes behavior for hidden elements and can make matching oscillate.
+      full: textOf(article, true),
+      handle,
+      promoted: isPromoted(article),
+      key: tweetKey(article) || JSON.stringify([handle, text])
+    };
+  }
 
-    const text = Array.from(article.querySelectorAll('[data-testid="tweetText"]'))
-      .map(textOf)
-      .join("\n");
+  // Evaluate regex away from the page's main thread. Plain keyword rules stay local.
+  async function evaluate(post, place, revision) {
+    if (!settings.enabled || !settings.places[place]) return null;
+    const text = post.text;
 
     if (allow.length) {
       const lower = text.toLowerCase();
@@ -99,23 +113,27 @@
     }
 
     if (settings.accounts.length) {
-      const handle = authorHandle(article);
+      const handle = post.handle;
       if (handle && settings.accounts.includes(handle)) return "@" + handle;
     }
 
-    if (settings.hidePromoted && isPromoted(article)) return "Promoted";
+    if (settings.hidePromoted && post.promoted) return "Promoted";
 
-    let full = null;
     for (const { k, re } of rules) {
-      let hay = text;
-      if (k.scope === "all") hay = full === null ? (full = article.innerText + "\n" + emojiOf(article)) : full;
-      if (re.test(hay)) return "“" + k.text + "”";
+      if (revision !== version) return null;
+      const hay = k.scope === "all" ? post.full : text;
+      const matched = k.regex ? await HFRegex.test(k, hay) : re.test(hay);
+      if (matched) return "“" + k.text + "”";
     }
     return null;
   }
 
   function clear(cell) {
     cell.classList.remove("hf-hide");
+    if (cell.matches("article")) {
+      cell.classList.remove("hf-blur", "hf-collapsed");
+      cell.removeAttribute("title");
+    }
     cell.querySelectorAll("article.hf-blur, article.hf-collapsed").forEach((a) => {
       a.classList.remove("hf-blur", "hf-collapsed");
       a.removeAttribute("title");
@@ -146,12 +164,13 @@
     );
   }
 
-  function apply(article, reason) {
+  function apply(article, reason, key) {
     const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
 
-    if (cell.__hfArticle !== article) {
+    if (cell.__hfArticle !== article || cell.__hfKey !== key) {
       clear(cell);
       cell.__hfArticle = article;
+      cell.__hfKey = key;
     }
     if (!reason) {
       if (cell.dataset.hfState) clear(cell);
@@ -194,72 +213,91 @@
 
   function notify() {
     try {
-      const r = chrome.runtime.sendMessage({ type: "hf:count", count: seen.size });
+      const r = chrome.runtime.sendMessage({ type: "hf:count", count: seen.size, regexWarning: HFRegex.warning });
       if (r && r.catch) r.catch(() => {});
     } catch (_) {}
   }
 
-  async function flush() {
-    const n = pending;
-    pending = 0;
-    if (!n) return;
-    try {
-      const { stats } = await chrome.storage.local.get("stats");
-      await chrome.storage.local.set({ stats: { total: ((stats && stats.total) || 0) + n } });
-    } catch (_) {}
-  }
-
-  function track(article, reason) {
-    const key = tweetKey(article) || reason + "|" + article.textContent.slice(0, 80);
-    if (!seen.has(key)) {
-      seen.add(key);
-      notify();
-    }
-    if (!counted.has(key)) {
-      counted.add(key);
-      pending++;
-      clearTimeout(flushTimer);
-      flushTimer = setTimeout(flush, 2000);
-    }
-  }
-
-  function scan() {
-    scheduled = false;
+  async function scan() {
+    if (!ready) return;
+    scanning = true;
     const place = currentPlace();
-    document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
-      const sig = version + "|" + place + "|" + sigOf(article.textContent);
-      if (article.__hfSig === sig) return;
-      article.__hfSig = sig;
-      const reason = evaluate(article, place);
-      apply(article, reason);
-      if (reason) track(article, reason);
-    });
+    const revision = version;
+    const route = location.href;
+    const current = new Set();
+    const newlyCounted = new Set();
+    try {
+      for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
+        const post = snapshot(article);
+        const content = JSON.stringify(post);
+        const sig = revision + "|" + route + "|" + content;
+        let reason = article.__hfReason;
+        if (article.__hfSig !== sig) {
+          reason = await evaluate(post, place, revision);
+          if (revision !== version || route !== location.href) { rescan = true; return; }
+          if (!article.isConnected || JSON.stringify(snapshot(article)) !== content) { rescan = true; continue; }
+          article.__hfSig = sig;
+          article.__hfReason = reason;
+          apply(article, reason, post.key);
+        }
+        if (reason) {
+          const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
+          if (cell.dataset.hfState !== "revealed") current.add(post.key);
+          if (!counted.has(post.key)) newlyCounted.add(post.key);
+        }
+      }
+      seen.clear();
+      current.forEach((key) => seen.add(key));
+      notify();
+      if (newlyCounted.size) {
+        newlyCounted.forEach((key) => counted.add(key));
+        chrome.runtime.sendMessage({ type: "hf:stats", count: newlyCounted.size, epoch: statsEpoch }).catch(() => {});
+      }
+    } finally {
+      scanning = false;
+      if (rescan) { rescan = false; schedule(0); }
+    }
   }
 
   function schedule(delay = 150) {
-    if (scheduled) return;
-    scheduled = true;
-    setTimeout(scan, delay);
+    if (scanning) { rescan = true; return; }
+    if (scanTimer !== null) return;
+    scanTimer = setTimeout(() => { scanTimer = null; scan(); }, delay);
   }
 
   async function refresh() {
-    settings = await HF.load();
+    const revision = ++version;
+    ready = false;
+    const stored = await chrome.storage.local.get([HF.KEY, "stats"]);
+    if (revision !== version) return;
+    settings = HF.sanitize(stored[HF.KEY]);
+    const epoch = stored.stats && stored.stats.epoch || 0;
+    if (epoch !== statsEpoch) counted.clear();
+    statsEpoch = epoch;
     compile();
-    version++;
+    ready = true;
     seen.clear(); // the page count is rebuilt from the posts that match the new settings
     notify();
     schedule(0);
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes[HF.KEY]) refresh();
+    if (area !== "local") return;
+    const reset = changes.stats && (changes.stats.newValue && changes.stats.newValue.epoch || 0) !== statsEpoch;
+    if (changes[HF.KEY] || reset) refresh();
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg && msg.type === "hf:get-state") sendResponse({ count: seen.size });
+    if (msg && msg.type === "hf:get-state") sendResponse({ count: seen.size, regexWarning: HFRegex.warning });
   });
 
-  new MutationObserver(() => schedule()).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(() => schedule()).observe(document.body, {
+    childList: true, subtree: true, characterData: true,
+    attributes: true, attributeFilter: ["alt", "href", "data-testid"]
+  });
+  // X changes routes without loading a new document.
+  if (window.navigation) window.navigation.addEventListener("currententrychange", () => schedule(0));
+  window.addEventListener("popstate", () => schedule(0));
 
   notify();
   refresh();

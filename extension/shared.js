@@ -19,7 +19,7 @@ const HF = (() => {
 
   function cleanKeyword(k) {
     if (!k || typeof k.text !== "string") return null;
-    const text = k.text.trim().slice(0, LIMITS.text);
+    const text = k.text.trim();
     if (!text) return null;
     return {
       id: typeof k.id === "string" ? k.id : uid(),
@@ -40,7 +40,7 @@ const HF = (() => {
 
   function cleanPhrase(p) {
     if (typeof p !== "string") return null;
-    const v = p.trim().slice(0, LIMITS.text);
+    const v = p.trim();
     return v || null;
   }
 
@@ -74,6 +74,24 @@ const HF = (() => {
     return chrome.storage.local.set({ [KEY]: sanitize(settings) });
   }
 
+  // Validate before replacing anything. Older exports may omit optional preferences.
+  function importSettings(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid backup");
+    const names = ["keywords", "accounts", "allow"];
+    if (!names.some((name) => Object.hasOwn(raw, name))) throw new Error("Invalid backup");
+    for (const name of names) {
+      if (!Object.hasOwn(raw, name)) continue;
+      if (!Array.isArray(raw[name]) || raw[name].length > LIMITS[name]) throw new Error("Invalid list");
+    }
+    for (const k of raw.keywords || []) {
+      if (!cleanKeyword(k) || k.text.trim().length > LIMITS.text) throw new Error("Invalid keyword");
+      if (k.regex && !validateRegex(k.text)) throw new Error("Invalid regular expression");
+    }
+    if ((raw.accounts || []).some((h) => !cleanHandle(h))) throw new Error("Invalid account");
+    if ((raw.allow || []).some((p) => !cleanPhrase(p) || p.trim().length > LIMITS.text)) throw new Error("Invalid exception");
+    return sanitize(raw);
+  }
+
   const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   function compileKeyword(k) {
@@ -96,5 +114,5 @@ const HF = (() => {
     }
   }
 
-  return { KEY, DEFAULTS, LIMITS, uid, sanitize, load, save, cleanKeyword, cleanHandle, cleanPhrase, compileKeyword, validateRegex };
+  return { KEY, DEFAULTS, LIMITS, uid, sanitize, load, save, importSettings, cleanKeyword, cleanHandle, cleanPhrase, compileKeyword, validateRegex };
 })();

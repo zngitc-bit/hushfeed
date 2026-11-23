@@ -111,6 +111,7 @@ $("#kwForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const text = $("#kwText").value.trim();
   if (!text) return;
+  if (text.length > HF.LIMITS.text) return showError("#kwError", "Use up to " + HF.LIMITS.text + " characters. Your rule has not been saved.");
   const regex = $("#kwRegex").checked;
   if (regex && !HF.validateRegex(text)) return showError("#kwError", "That regular expression isn’t valid.");
   if (S.keywords.length >= HF.LIMITS.keywords) return showError("#kwError", "You’ve reached the limit of " + HF.LIMITS.keywords + " rules.");
@@ -134,6 +135,7 @@ $("#acForm").addEventListener("submit", (e) => {
   if (!raw) return;
   const handle = HF.cleanHandle(raw);
   if (!handle) return showError("#acError", "Usernames use letters, numbers and underscores, up to 15 characters.");
+  if (!S.accounts.includes(handle) && S.accounts.length >= HF.LIMITS.accounts) return showError("#acError", "You’ve reached the limit of " + HF.LIMITS.accounts + " accounts. Remove an account before adding another.");
   showError("#acError", "");
   if (!S.accounts.includes(handle)) S.accounts.unshift(handle);
   $("#acText").value = "";
@@ -145,7 +147,11 @@ $("#alForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const phrase = HF.cleanPhrase($("#alText").value);
   if (!phrase) return;
-  if (!S.allow.some((p) => p.toLowerCase() === phrase.toLowerCase())) S.allow.unshift(phrase);
+  if (phrase.length > HF.LIMITS.text) return showError("#alError", "Use up to " + HF.LIMITS.text + " characters.");
+  const exists = S.allow.some((p) => p.toLowerCase() === phrase.toLowerCase());
+  if (!exists && S.allow.length >= HF.LIMITS.allow) return showError("#alError", "You’ve reached the limit of " + HF.LIMITS.allow + " exceptions. Remove one before adding another.");
+  showError("#alError", "");
+  if (!exists) S.allow.unshift(phrase);
   $("#alText").value = "";
   commit();
 });
@@ -177,9 +183,10 @@ $("#importFile").addEventListener("change", async (e) => {
   if (!file) return;
   try {
     const parsed = JSON.parse(await file.text());
-    if (!parsed || typeof parsed !== "object") throw new Error("bad file");
-    S = HF.sanitize(parsed);
-    await commit();
+    const imported = HF.importSettings(parsed);
+    await HF.save(imported);
+    S = imported;
+    render();
     backupMsg("Imported " + S.keywords.length + " keyword rules, " + S.accounts.length + " accounts and " + S.allow.length + " exceptions.");
   } catch (_) {
     backupMsg("That file couldn’t be read. Choose a file exported from Hushfeed.");
@@ -187,10 +194,17 @@ $("#importFile").addEventListener("change", async (e) => {
 });
 
 $("#resetBtn").addEventListener("click", async () => {
-  if (!confirm("Remove all rules and restore the default settings?")) return;
-  S = HF.sanitize(null);
-  await commit();
-  backupMsg("Settings reset.");
+  if (!confirm("Remove all rules and statistics and restore the default settings?")) return;
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "hf:reset" });
+    if (!result || !result.ok) throw new Error("Reset failed");
+    S = await HF.load();
+    render();
+    await renderStats();
+    backupMsg("Settings and statistics reset.");
+  } catch (_) {
+    backupMsg("Reset failed. Please try again.");
+  }
 });
 
 // Keep the page in sync if the popup changes something
