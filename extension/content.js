@@ -10,6 +10,16 @@
     "hashtag", "bookmarks", "lists", "communities", "jobs", "premium", "tos", "privacy"
   ]);
   const TEXT_BLOCKS = new Set(["ARTICLE", "DIV", "P", "SECTION", "HEADER", "FOOTER", "BLOCKQUOTE", "LI", "H1", "H2", "H3"]);
+  const POST_SELECTOR = 'article[data-testid="tweet"], [role="link"][data-href*="/status/"] > article';
+
+  function postLink(article) {
+    const parent = article.parentElement;
+    return parent && parent.matches('[role="link"][data-href*="/status/"]') ? parent : null;
+  }
+
+  function postCell(article) {
+    return article.closest('[data-testid="cellInnerDiv"]') || postLink(article) || article;
+  }
 
   let settings = HF.sanitize(null);
   let rules = [];
@@ -43,6 +53,9 @@
   }
 
   function authorHandle(article) {
+    const link = postLink(article);
+    const author = link && link.getAttribute("data-href").match(/^\/([A-Za-z0-9_]{1,15})\/status\/\d+/);
+    if (author) return author[1].toLowerCase();
     const links = article.querySelectorAll('[data-testid="User-Name"] a[href^="/"]');
     for (const a of links) {
       const m = (a.getAttribute("href") || "").match(/^\/([A-Za-z0-9_]{1,15})$/);
@@ -52,6 +65,9 @@
   }
 
   function tweetKey(article) {
+    const link = postLink(article);
+    const id = link && link.getAttribute("data-href").match(/\/status\/(\d+)/);
+    if (id) return id[1];
     const time = article.querySelector('a[href*="/status/"] time');
     const href = time && time.parentElement && time.parentElement.getAttribute("href");
     const m = href && href.match(/\/status\/(\d+)/);
@@ -84,12 +100,15 @@
     // Labels live outside post text, author names, quoted posts and link cards.
     return Array.from(article.querySelectorAll("span, div")).some((node) =>
       node.childElementCount === 0 && PROMO_LABELS.has(node.textContent.trim()) &&
-      !node.closest('[data-testid="tweetText"], [data-testid="User-Name"], a, [role="link"], [data-testid="card.wrapper"], [data-testid="quoteTweet"]')
+      !node.closest('[data-testid="tweetText"], [lang][dir="auto"], [data-testid="User-Name"], a, [data-testid="card.wrapper"], [data-testid="quoteTweet"]') &&
+      (!node.closest('[role="link"]') || node.closest('[role="link"]') === postLink(article))
     );
   }
 
   function snapshot(article) {
-    const text = Array.from(article.querySelectorAll('[data-testid="tweetText"]')).map((node) => textOf(node)).join("\n");
+    const legacyText = article.querySelectorAll('[data-testid="tweetText"]');
+    const textNodes = legacyText.length ? legacyText : article.querySelectorAll('[lang][dir="auto"]');
+    const text = Array.from(textNodes).map((node) => textOf(node)).join("\n");
     const handle = authorHandle(article);
     return {
       text,
@@ -165,7 +184,7 @@
   }
 
   function apply(article, reason, key) {
-    const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
+    const cell = postCell(article);
 
     if (cell.__hfArticle !== article || cell.__hfKey !== key) {
       clear(cell);
@@ -227,7 +246,9 @@
     const current = new Set();
     const newlyCounted = new Set();
     try {
-      for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
+      for (const article of document.querySelectorAll(POST_SELECTOR)) {
+        // Quoted articles belong to their enclosing post, not a separate feed row.
+        if (article.parentElement.closest("article")) continue;
         const post = snapshot(article);
         const content = JSON.stringify(post);
         const sig = revision + "|" + route + "|" + content;
@@ -241,7 +262,7 @@
           apply(article, reason, post.key);
         }
         if (reason) {
-          const cell = article.closest('[data-testid="cellInnerDiv"]') || article;
+          const cell = postCell(article);
           if (cell.dataset.hfState !== "revealed") current.add(post.key);
           if (!counted.has(post.key)) newlyCounted.add(post.key);
         }
@@ -293,7 +314,7 @@
 
   new MutationObserver(() => schedule()).observe(document.body, {
     childList: true, subtree: true, characterData: true,
-    attributes: true, attributeFilter: ["alt", "href", "data-testid"]
+    attributes: true, attributeFilter: ["alt", "href", "data-href", "data-testid", "lang", "dir"]
   });
   // X changes routes without loading a new document.
   if (window.navigation) window.navigation.addEventListener("currententrychange", () => schedule(0));

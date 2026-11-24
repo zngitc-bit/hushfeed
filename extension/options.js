@@ -214,6 +214,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.stats) renderStats();
 });
 
-$("#version").textContent = "v" + chrome.runtime.getManifest().version;
+const version = chrome.runtime.getManifest().version;
+$("#version").textContent = "v" + version;
+
+// Drafts contain only the extension version and prompts the user can fill in.
+const feedbackDrafts = [
+  {
+    selector: "#reportProblem",
+    subject: "Hushfeed problem report",
+    prompts: ["What happened?", "What did you expect?", "Steps to reproduce", "You can attach a screenshot if it helps."]
+  },
+  {
+    selector: "#suggestImprovement",
+    subject: "Hushfeed improvement suggestion",
+    prompts: ["My suggestion", "How it would help"]
+  }
+];
+for (const draft of feedbackDrafts) {
+  const body = ["Hushfeed version " + version, ...draft.prompts, ""].join("\r\n\r\n");
+  $(draft.selector).href = "mailto:zng.itc@gmail.com?subject=" + encodeURIComponent(draft.subject) + "&body=" + encodeURIComponent(body);
+}
+
 HF.load().then((s) => { S = s; render(); });
 renderStats();

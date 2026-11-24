@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hushfeed – Mute posts by keyword",
   "short_name": "Hushfeed",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Hide posts on X (Twitter) that contain words, phrases or accounts you choose. Private and fast: everything stays on your device.",
   "minimum_chrome_version": "111",
   "icons": {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+- Support X search and feed posts that use data-href links and language-tagged text instead of legacy tweet test IDs, including account blocking and multiple posts in one list item.
+- Add Feedback & support in settings, with email drafts for problem reports and improvement suggestions.
+- Include the extension version in drafts and show the support address for manual contact.
+
 ## 1.0.2
 - Validate imported backups before replacing settings, preserving existing rules on invalid input.
 - Run regular expressions in an isolated worker with a time limit and a popup warning for skipped slow rules.

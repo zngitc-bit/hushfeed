@@ -7,6 +7,7 @@ Run from the repo root:
 import json, time, os, shutil, tempfile, sys
 from playwright.sync_api import sync_playwright
 from regressions import run_regressions
+from new_x_markup import run_new_x_markup
 
 EXT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "extension"))
 PROFILE = tempfile.mkdtemp(prefix="hushfeed-pw-")
@@ -347,6 +348,7 @@ with sync_playwright() as p:
     pu.close()
     o.close()
     run_regressions(ctx, admin, ext_id, check, article, page_html, console_errors)
+    run_new_x_markup(ctx, admin, check, console_errors)
     ctx.close()
 
 print()
