@@ -221,19 +221,64 @@ $("#version").textContent = "v" + version;
 const feedbackDrafts = [
   {
     selector: "#reportProblem",
+    title: "Problem report",
     subject: "Hushfeed problem report",
     prompts: ["What happened?", "What did you expect?", "Steps to reproduce", "You can attach a screenshot if it helps."]
   },
   {
     selector: "#suggestImprovement",
+    title: "Improvement suggestion",
     subject: "Hushfeed improvement suggestion",
     prompts: ["My suggestion", "How it would help"]
   }
 ];
+const supportEmail = "zng.itc@gmail.com";
 for (const draft of feedbackDrafts) {
   const body = ["Hushfeed version " + version, ...draft.prompts, ""].join("\r\n\r\n");
-  $(draft.selector).href = "mailto:zng.itc@gmail.com?subject=" + encodeURIComponent(draft.subject) + "&body=" + encodeURIComponent(body);
+  $(draft.selector).addEventListener("click", () => {
+    $("#feedbackMailto").href = "mailto:" + supportEmail + "?subject=" + encodeURIComponent(draft.subject) + "&body=" + encodeURIComponent(body);
+    const gmail = new URL("https://mail.google.com/mail/");
+    gmail.search = new URLSearchParams({ view: "cm", fs: "1", to: supportEmail, su: draft.subject, body }).toString();
+    $("#feedbackGmail").href = gmail.href;
+    $("#feedbackText").value = "To: " + supportEmail + "\nSubject: " + draft.subject + "\n\n" + body;
+    $("#feedbackDraftTitle").textContent = draft.title;
+    $("#feedbackDraft").hidden = false;
+    $("#feedbackStatus").textContent = "";
+    for (const topic of feedbackDrafts) {
+      $(topic.selector).setAttribute("aria-expanded", String(topic === draft));
+    }
+    $("#feedbackDraftTitle").focus();
+  });
 }
+
+async function copyFeedbackText(text, message, fallback) {
+  try {
+    await navigator.clipboard.writeText(text);
+    $("#feedbackStatus").textContent = message;
+  } catch (_) {
+    fallback();
+  }
+}
+$("#feedbackMailto").addEventListener("click", () => {
+  $("#feedbackStatus").textContent = "If no email app opens, use Open Gmail or Copy draft instead.";
+});
+$("#copyFeedback").addEventListener("click", () => {
+  copyFeedbackText($("#feedbackText").value, "Draft copied. Paste it into your email service, complete it and send when ready.", () => {
+    $("#feedbackText").focus();
+    $("#feedbackText").select();
+    $("#feedbackStatus").textContent = "Automatic copying is unavailable. The draft is selected; use your browser's Copy command.";
+  });
+});
+$("#copySupportEmail").addEventListener("click", () => {
+  copyFeedbackText(supportEmail, "Email address copied.", () => {
+    const range = document.createRange();
+    range.selectNodeContents($(".support-email"));
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    $("#feedbackStatus").textContent = "Automatic copying is unavailable. The email address is selected; use your browser's Copy command.";
+  });
+});
 
 HF.load().then((s) => { S = s; render(); });
 renderStats();

@@ -1,6 +1,6 @@
 # Hushfeed privacy policy
 
-Last updated: November 24, 2026
+Last updated: November 25, 2026
 
 Hushfeed is a browser extension that hides posts on x.com and twitter.com that match words, phrases or accounts chosen by the user.
 
@@ -17,7 +17,9 @@ Hushfeed is a browser extension that hides posts on x.com and twitter.com that m
 
 ## Voluntary feedback by email
 
-The **Feedback & support** buttons open your email app with a draft addressed to zng.itc@gmail.com. The draft contains the Hushfeed version and prompts for your report or suggestion. It does not automatically include your rules, browsing history, page content or screenshots.
+The **Feedback & support** buttons display a draft addressed to zng.itc@gmail.com. The draft contains the Hushfeed version and prompts for your report or suggestion. It does not automatically include your rules, browsing history, page content or screenshots.
+
+You can choose to open the draft in Gmail in a new browser tab, open your configured email app, or copy it to the clipboard. Opening Gmail passes the recipient, subject and draft text to Google's website in the link. Copy buttons write only the displayed draft or support email address to your clipboard; Hushfeed does not read your clipboard.
 
 You can edit or discard the draft. No email is sent until you send it through your email app. If you do, the recipient receives your email address, message and any attachments you choose to include. Your email provider handles sending the message; Hushfeed has no built-in email submission service.
 

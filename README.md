@@ -14,11 +14,11 @@ Mute posts on X (Twitter) by keyword, phrase or account. Chrome extension, Manif
 - Feedback and support through email drafts you review and send
 - Private: rules are stored locally, no network requests, no analytics
 
-## Version 1.0.3
+## Version 1.0.4
 
-- Recognizes the updated X markup in search results and feeds, including blocked accounts and multiple posts in one list item.
-- Adds **Feedback & support** in settings for problem reports and suggestions.
-- Includes regression tests based on reported X page examples.
+- Displays feedback drafts in settings before choosing how to send them.
+- Opens Gmail in the browser or a configured email app, with copying available for any email service.
+- Selects the draft or address for manual copying when clipboard access is unavailable.
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history. A GitHub release and its Chrome Web Store approval are separate steps.
 
@@ -71,7 +71,7 @@ See [docs/index.md](docs/index.md). Hushfeed reads post text on x.com only to ma
 
 Open **Settings → Feedback & support** to report a problem or suggest an improvement, or email [zng.itc@gmail.com](mailto:zng.itc@gmail.com).
 
-The buttons open your email app with an editable draft containing the extension version and prompts. Hushfeed does not send the message automatically or attach your rules, browsing history or page content. You choose what to include and whether to send it.
+The buttons display a draft containing the extension version and prompts. Open it in Gmail in your browser or in your configured email app, or copy it to any email service. Hushfeed does not send the message automatically or attach your rules, browsing history or page content. You choose what to include and whether to send it. If automatic copying is unavailable, the text is selected for manual copying.
 
 ## Disclaimer
 

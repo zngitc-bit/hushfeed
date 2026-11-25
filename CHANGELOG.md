@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+- Show feedback drafts in settings, with choices to open Gmail in the browser, open an email app or copy the draft.
+- Add email address copying and manual selection when clipboard access is unavailable.
+
 ## 1.0.3
 - Support X search and feed posts that use data-href links and language-tagged text instead of legacy tweet test IDs, including account blocking and multiple posts in one list item.
 - Add Feedback & support in settings, with email drafts for problem reports and improvement suggestions.
